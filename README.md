@@ -2,12 +2,19 @@
 
 # Grupo: 24
 Colaboradores:
+
 •	Rafael Job
+
 •	Moises da Silva Pereira
+
 •	Ramon Coutinho Guilges
+
 •	Renan Martim de Castro
+
 •	Rodrigo Gil dos Santos
+
 •	Rodrigo Peluci Freitas
+
 Descrição do Projeto:
 Este repositório contém informações e documentação relacionadas ao projeto de desenvolvimento de um aplicativo mobile com o objetivo de otimizar a experiência de pedidos em restaurantes à la carte. O aplicativo permite que os clientes façam seus pedidos de forma antecipada através de uma plataforma mobile com interface em HTML. A iniciativa visa agilizar o processo de preparo do prato, reduzir o tempo de espera dos clientes no restaurante e, em última instância, proporcionar uma experiência mais conveniente e eficiente.
 Visão do Produto:
@@ -43,4 +50,8 @@ Agradecimentos:
 Agradecemos a todos que contribuíram para o desenvolvimento deste projeto.
 
 Video de demonstração:
-https://youtu.be/d3aJIE8A0-A
+
+
+Uploading bandicam 2024-05-20 14-10-19-360.mp4…
+
+
