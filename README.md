@@ -52,6 +52,6 @@ Agradecemos a todos que contribuíram para o desenvolvimento deste projeto.
 Video de demonstração:
 
 
-Uploading bandicam 2024-05-20 14-10-19-360.mp4…
+https://github.com/rafajob/SENAC-EAD-PI-2024/assets/56689600/c4aa3fe9-d9eb-4732-b14d-3b33692a3fc8
 
 
