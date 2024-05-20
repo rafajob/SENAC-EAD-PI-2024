@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Seleção de Restaurante</title>
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background-color: #f1f1f1;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+    }
+    .container {
+        width: 100%;
+        max-width: 300px;
+        margin: 20px;
+        padding: 20px;
+        background-color: #ffffff;
+        border-radius: 5px;
+        box-shadow: 0 2px 5px #ccc;
+        text-align: center;
+        /* Centralizar o conteúdo */
+    }
+
+    h1 {
+        font-size: 1.5em;
+        text-align: center; /* Centralizar o título */
+    }
+
+    #restauranteForm {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    label {
+        display: block;
+        margin-bottom: 5px;
+    }
+
+    select,
+    input[type="submit"],
+    button {
+        width: 50%;
+        padding: 10px;
+        box-sizing: border-box;
+        margin-bottom: 10px;
+		text-align: center
+    }
+
+    button {
+        background-color: #007BFF;
+        color: #fff;
+        border: none;
+        border-radius: 3px;
+        cursor: pointer;
+    }
+
+    
+    @media only screen and (max-width: 600px) {
+        /* Adicione regras de estilo específicas para dispositivos móveis aqui */
+
+        h1 {
+            font-size: 1.2em; /* Reduza o tamanho do título em dispositivos móveis */
+        }
+
+        #restauranteForm {
+            padding: 10px; /* Reduza o preenchimento em dispositivos móveis */
+        }
+
+        select,
+        input[type="submit"] {
+            margin-bottom: 8px; /* Ajuste a margem inferior em dispositivos móveis */
+        }
+    }
+</style>
+
+</head>
+
+<body>
+    <div class="container">
+    <h1>Seleção de Restaurante</h1>
+
+    <form id="restauranteForm">
+        <label for="restaurante">Escolha um restaurante:</label>
+        <select id="restaurante" name="restaurante">
+            <!-- A lista de restaurantes será carregada dinamicamente aqui -->
+        </select>
+        <br>
+        <button type="button" onclick="window.location.href='pratos.html?restauranteId=' + $('#restaurante').val()">Próximo</button>
+    </form>
+</div>    
+    <script>
+        $(document).ready(function () {
+            $.ajax({
+                url: 'carregar_restaurantes.php',
+                type: 'POST',
+                dataType: 'html',
+                success: function (data) {
+                    $('#restaurante').html(data);
+                },
+                error: function () {
+                    alert('Erro ao carregar a lista de restaurantes.');
+                }
+            });
+        });
+    </script>
+
+</body>
+
+</html>

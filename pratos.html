@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Seleção de Pratos</title>
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+
+    <style>
+    body {
+        font-family: Arial, sans-serif;
+        background-color: #f1f1f1;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+    }
+
+        h1 {
+            font-size: 1.5em;
+            text-align: center;
+        }
+
+        #pratoForm {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        select,
+        input[type="number"],
+        input[type="submit"] {
+            width: 50%;
+            padding: 10px;
+            box-sizing: border-box;
+            margin-bottom: 10px;
+            text-align: center
+        }
+
+        input[type="submit"] {
+            background-color: #007BFF; /* Adicione a cor desejada aqui */
+            color: #fff;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        @media only screen and (max-width: 600px) {
+            /* Adicione regras de estilo específicas para dispositivos móveis aqui */
+
+            h1 {
+                font-size: 1.2em; /* Reduza o tamanho do título em dispositivos móveis */
+            }
+
+            #pratoForm {
+                padding: 10px; /* Reduza o preenchimento em dispositivos móveis */
+            }
+
+            select,
+            input[type="number"],
+            input[type="submit"] {
+                margin-bottom: 8px; /* Ajuste a margem inferior em dispositivos móveis */
+            }
+        }
+        .container {
+        width: 100%;
+        max-width: 300px;
+        margin: 20px;
+        padding: 20px;
+        background-color: #ffffff;
+        border-radius: 5px;
+        box-shadow: 0 2px 5px #ccc;
+        text-align: center;
+        /* Centralizar o conteúdo */
+    }
+    </style>
+
+</head>
+
+<body>
+    <div class="container">
+    <h1>Seleção de Prato</h1>
+
+    <form id="pratoForm">
+        <label for="numeroPedidos">Número de Pedidos:</label>
+        <input type="number" id="numeroPedidos" name="numeroPedidos" min="0" value="0">
+    
+        <div id="pratosContainer">
+          </div>
+    
+        <input type="submit" value="Selecionar Pratos">
+    </div>
+    </form>
+
+    <script>
+        $(document).ready(function () {
+            var restauranteId = new URLSearchParams(window.location.search).get('restauranteId');
+
+            function carregarListaDePratos(selectElement) {
+                $(selectElement).html('<option value="">Selecione um prato</option>'); // Opcional: Adicione uma opção padrão
+                $.ajax({
+                    url: 'selecao_pratos.php',
+                    type: 'POST',
+                    data: { restauranteId: restauranteId },
+                    dataType: 'html',
+                    success: function (data) {
+                        $(selectElement).html(data);
+                    },
+                    error: function () {
+                        alert('Erro ao carregar a lista de pratos.');
+                    }
+                });
+            }
+
+            // Adicionar campos de seleção de pratos conforme o número de pedidos
+            $('#numeroPedidos').on('change', function () {
+                var numPedidos = $(this).val();
+                $('#pratosContainer').empty();
+                for (var i = 0; i < numPedidos; i++) {
+                    $('#pratosContainer').append('<label for="prato' + i + '">Escolha um prato:</label><select id="prato' + i + '" class="prato" name="pratoContainer[]"></select>');
+                }
+
+                // Carregar lista de pratos para cada novo campo de seleção
+                $('.prato').each(function () {
+                    carregarListaDePratos(this);
+                });
+            });
+
+            // Tratar o envio do formulário
+            $('#pratoForm').submit(function (event) {
+                event.preventDefault();
+                var pratosSelecionados = $('.prato').map(function () {
+                    return $(this).val();
+                }).get();
+
+                // Verificar se todos os pratos foram selecionados
+                var pratosValidos = true;
+                $.each(pratosSelecionados, function (index, value) {
+                    if (value === '') {
+                        pratosValidos = false;
+                        return false; // Sair do loop se algum prato não estiver selecionado
+                    }
+                });
+
+                if (pratosValidos) {
+                    var restauranteId = new URLSearchParams(window.location.search).get('restauranteId');
+                    var queryParams = '?restaurante=' + restauranteId;
+                    $.each(pratosSelecionados, function (index, prato) {
+                        queryParams += '&prato[]=' + prato;
+                    });
+                    window.location.href = 'confirmacao_pedido.php' + queryParams;
+                } else {
+                    alert('Por favor, selecione um prato para cada pedido.');
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>
