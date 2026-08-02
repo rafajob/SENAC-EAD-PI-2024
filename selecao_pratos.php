@@ -1,26 +1,39 @@
 <?php
-include 'conexao.php';
 
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['restauranteId'])) {
-    $restauranteId = $_POST['restauranteId'];
+declare(strict_types=1);
 
-    try {
-        $stmt = $pdo->prepare('SELECT nome_prato FROM pratos WHERE id_restaurante = :id_restaurante');
-        $stmt->bindParam(':id_restaurante', $restauranteId, PDO::PARAM_INT);
-        $stmt->execute();
+require_once __DIR__ . '/auth.php';
+require_auth();
 
-        $pratos = $stmt->fetchAll(PDO::FETCH_COLUMN);
+header('Content-Type: application/json; charset=utf-8');
 
-        echo '<label for="prato">Escolha um prato:</label>';
-        echo '<select id="prato" name="prato">';
-        foreach ($pratos as $prato) {
-            echo '<option value="' . $prato . '">' . $prato . '</option>';
-        }
-        echo '</select>';
-    } catch (PDOException $e) {
-        echo "Erro ao conectar ao banco de dados: " . $e->getMessage();
-    } finally {
-        $pdo = null;
-    }
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    echo json_encode(['error' => 'Método não permitido.']);
+    exit();
 }
-?>
+
+require_csrf();
+
+$restaurantId = filter_input(INPUT_POST, 'restaurante_id', FILTER_VALIDATE_INT);
+
+if (!$restaurantId) {
+    http_response_code(422);
+    echo json_encode(['error' => 'Restaurante inválido.']);
+    exit();
+}
+
+require_once __DIR__ . '/conexao.php';
+
+$statement = $pdo->prepare(
+    'SELECT id_prato, nome_prato
+     FROM pratos
+     WHERE id_restaurante = :restaurant_id
+     ORDER BY nome_prato'
+);
+$statement->execute(['restaurant_id' => $restaurantId]);
+
+echo json_encode(
+    ['pratos' => $statement->fetchAll()],
+    JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+);
