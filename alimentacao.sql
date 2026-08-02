@@ -1,144 +1,99 @@
--- phpMyAdmin SQL Dump
--- version 4.5.4.1
--- http://www.phpmyadmin.net
---
--- Host: localhost
--- Generation Time: 19-Nov-2023 às 01:32
--- Versão do servidor: 5.7.11
--- PHP Version: 7.0.3
+-- Schema para uma instalação nova do Food in Time.
+-- Importe este arquivo em um banco vazio chamado "alimentacao".
 
-SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
-SET time_zone = "+00:00";
+SET NAMES utf8mb4;
+SET time_zone = '+00:00';
 
+CREATE TABLE restaurantes (
+    id_restaurante INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    nome_restaurante VARCHAR(100) NOT NULL,
+    PRIMARY KEY (id_restaurante)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
-/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
-/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
-/*!40101 SET NAMES utf8mb4 */;
+CREATE TABLE pratos (
+    id_prato INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    nome_prato VARCHAR(100) NOT NULL,
+    id_restaurante INT UNSIGNED NOT NULL,
+    PRIMARY KEY (id_prato),
+    INDEX idx_pratos_restaurante (id_restaurante),
+    CONSTRAINT fk_pratos_restaurante
+        FOREIGN KEY (id_restaurante) REFERENCES restaurantes (id_restaurante)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---
--- Database: `alimentacao`
---
+CREATE TABLE clientes (
+    id_cliente INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    nome_cliente VARCHAR(100) NOT NULL,
+    email_cliente VARCHAR(190) NOT NULL,
+    senha_hash VARCHAR(255) NOT NULL,
+    perfil ENUM('cliente', 'restaurante', 'admin') NOT NULL DEFAULT 'cliente',
+    id_restaurante INT UNSIGNED NULL,
+    PRIMARY KEY (id_cliente),
+    UNIQUE KEY uq_clientes_email (email_cliente),
+    INDEX idx_clientes_restaurante (id_restaurante),
+    CONSTRAINT fk_clientes_restaurante
+        FOREIGN KEY (id_restaurante) REFERENCES restaurantes (id_restaurante)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- --------------------------------------------------------
+CREATE TABLE pedidos (
+    id_pedido INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    id_cliente INT UNSIGNED NOT NULL,
+    id_restaurante INT UNSIGNED NOT NULL,
+    hora_almoco TIME NULL,
+    opcao_refeicao ENUM('consumo_local', 'retirada') NOT NULL,
+    observacoes VARCHAR(500) NOT NULL DEFAULT '',
+    status ENUM('novo', 'confirmado', 'em_preparo', 'pronto', 'concluido', 'cancelado')
+        NOT NULL DEFAULT 'novo',
+    criado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id_pedido),
+    INDEX idx_pedidos_cliente (id_cliente),
+    INDEX idx_pedidos_restaurante_status (id_restaurante, status, criado_em),
+    CONSTRAINT fk_pedidos_cliente
+        FOREIGN KEY (id_cliente) REFERENCES clientes (id_cliente),
+    CONSTRAINT fk_pedidos_restaurante
+        FOREIGN KEY (id_restaurante) REFERENCES restaurantes (id_restaurante)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---
--- Estrutura da tabela `clientes`
---
+CREATE TABLE pedido_itens (
+    id_item INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    id_pedido INT UNSIGNED NOT NULL,
+    id_prato INT UNSIGNED NOT NULL,
+    quantidade SMALLINT UNSIGNED NOT NULL DEFAULT 1,
+    PRIMARY KEY (id_item),
+    INDEX idx_itens_pedido (id_pedido),
+    CONSTRAINT fk_itens_pedido
+        FOREIGN KEY (id_pedido) REFERENCES pedidos (id_pedido) ON DELETE CASCADE,
+    CONSTRAINT fk_itens_prato
+        FOREIGN KEY (id_prato) REFERENCES pratos (id_prato)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `clientes` (
-  `id_cliente` int(11) NOT NULL,
-  `nome_cliente` varchar(50) NOT NULL,
-  `senha` int(11) NOT NULL,
-  `email_cliente` varchar(50) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+INSERT INTO restaurantes (nome_restaurante) VALUES
+    ('Lagunas'),
+    ('Pratas'),
+    ('Bistecas');
 
---
--- Extraindo dados da tabela `clientes`
---
+INSERT INTO pratos (nome_prato, id_restaurante) VALUES
+    ('Peixe Grelhado', 1),
+    ('Sushi', 1),
+    ('Bacalhau', 1),
+    ('Bife a Cavalo', 2),
+    ('Burger de Costela', 2),
+    ('Massa Carbonara', 2),
+    ('Filé com Fritas', 3),
+    ('Costela na Brasa', 3),
+    ('X-Picanha', 3);
 
-INSERT INTO `clientes` (`id_cliente`, `nome_cliente`, `senha`, `email_cliente`) VALUES
-(1, 'Rafael', 123456, 'Teste@senac.com');
-
--- --------------------------------------------------------
-
---
--- Estrutura da tabela `pratos`
---
-
-CREATE TABLE `pratos` (
-  `id_prato` int(11) NOT NULL,
-  `nome_prato` varchar(50) NOT NULL,
-  `id_restaurante` int(11) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-
---
--- Extraindo dados da tabela `pratos`
---
-
-INSERT INTO `pratos` (`id_prato`, `nome_prato`, `id_restaurante`) VALUES
-(1, 'Peixe Grelhado', 1),
-(2, 'Sushi', 1),
-(3, 'Bacalhau', 1),
-(4, 'Bife a Cavalo', 2),
-(5, 'Burger de Costela', 2),
-(6, 'Massa Carbonara', 2),
-(7, 'File com Fritas', 3),
-(8, 'Costela na Brasa', 3),
-(9, 'X-Picanha', 3);
-
--- --------------------------------------------------------
-
---
--- Estrutura da tabela `restaurantes`
---
-
-CREATE TABLE `restaurantes` (
-  `id_restaurante` int(11) NOT NULL,
-  `nome_restaurante` varchar(50) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-
---
--- Extraindo dados da tabela `restaurantes`
---
-
-INSERT INTO `restaurantes` (`id_restaurante`, `nome_restaurante`) VALUES
-(1, 'Lagunas'),
-(2, 'Pratas'),
-(3, 'Bistecas');
-
---
--- Indexes for dumped tables
---
-
---
--- Indexes for table `clientes`
---
-ALTER TABLE `clientes`
-  ADD PRIMARY KEY (`id_cliente`);
-
---
--- Indexes for table `pratos`
---
-ALTER TABLE `pratos`
-  ADD PRIMARY KEY (`id_prato`),
-  ADD KEY `id_restaurante` (`id_restaurante`);
-
---
--- Indexes for table `restaurantes`
---
-ALTER TABLE `restaurantes`
-  ADD PRIMARY KEY (`id_restaurante`);
-
---
--- AUTO_INCREMENT for dumped tables
---
-
---
--- AUTO_INCREMENT for table `clientes`
---
-ALTER TABLE `clientes`
-  MODIFY `id_cliente` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
---
--- AUTO_INCREMENT for table `pratos`
---
-ALTER TABLE `pratos`
-  MODIFY `id_prato` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
---
--- AUTO_INCREMENT for table `restaurantes`
---
-ALTER TABLE `restaurantes`
-  MODIFY `id_restaurante` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
---
--- Constraints for dumped tables
---
-
---
--- Limitadores para a tabela `pratos`
---
-ALTER TABLE `pratos`
-  ADD CONSTRAINT `pratos_ibfk_1` FOREIGN KEY (`id_restaurante`) REFERENCES `restaurantes` (`id_restaurante`);
-
-/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
-/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
-/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+-- Usuário demonstrativo: Rafael / TroqueEstaSenha123!
+-- Troque ou remova este usuário antes de publicar a aplicação.
+INSERT INTO clientes (
+    nome_cliente,
+    email_cliente,
+    senha_hash,
+    perfil,
+    id_restaurante
+) VALUES (
+    'Rafael',
+    'rafael@example.test',
+    '$2b$12$t6Lnr6W4CSBJTQtFdbZqpeIQ8H43Av30BjnsBUmeFI81zVeuee4cO',
+    'admin',
+    NULL
+);
