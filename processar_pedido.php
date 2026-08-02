@@ -1,128 +1,143 @@
 <?php
-session_start();
+
+declare(strict_types=1);
+
+require_once __DIR__ . '/auth.php';
+require_role(['admin', 'restaurante']);
+require_once __DIR__ . '/conexao.php';
+
+$sql = '
+    SELECT
+        p.id_pedido,
+        c.nome_cliente,
+        r.nome_restaurante,
+        p.hora_almoco,
+        p.opcao_refeicao,
+        p.observacoes,
+        p.status,
+        p.criado_em,
+        GROUP_CONCAT(
+            CONCAT(pi.quantidade, " × ", pr.nome_prato)
+            ORDER BY pi.id_item
+            SEPARATOR ", "
+        ) AS pratos
+    FROM pedidos p
+    INNER JOIN clientes c ON c.id_cliente = p.id_cliente
+    INNER JOIN restaurantes r ON r.id_restaurante = p.id_restaurante
+    INNER JOIN pedido_itens pi ON pi.id_pedido = p.id_pedido
+    INNER JOIN pratos pr ON pr.id_prato = pi.id_prato
+';
+$parameters = [];
+
+if (($_SESSION['user_role'] ?? '') === 'restaurante') {
+    $sql .= ' WHERE p.id_restaurante = :restaurant_id';
+    $parameters['restaurant_id'] = (int) ($_SESSION['restaurant_id'] ?? 0);
+}
+
+$sql .= '
+    GROUP BY
+        p.id_pedido,
+        c.nome_cliente,
+        r.nome_restaurante,
+        p.hora_almoco,
+        p.opcao_refeicao,
+        p.observacoes,
+        p.status,
+        p.criado_em
+    ORDER BY
+        FIELD(p.status, "novo", "confirmado", "em_preparo", "pronto", "concluido", "cancelado"),
+        p.criado_em DESC
+    LIMIT 100
+';
+
+$statement = $pdo->prepare($sql);
+$statement->execute($parameters);
+$orders = $statement->fetchAll();
+
+$statusLabels = [
+    'novo' => 'Novo',
+    'confirmado' => 'Confirmado',
+    'em_preparo' => 'Em preparo',
+    'pronto' => 'Pronto',
+    'concluido' => 'Concluído',
+    'cancelado' => 'Cancelado',
+];
 ?>
-
 <!DOCTYPE html>
-<html lang="pt-br">
-
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="refresh" content="15">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel de Mensagens</title>
+    <title>Pedidos | Food in Time</title>
     <style>
-    body {
-        font-family: Arial, sans-serif;
-        text-align: center;
-        margin: 50px;
-    }
-
-    h1 {
-        color: #4CAF50;
-    }
-
-    .message-panel {
-        border: 1px solid #ccc;
-        padding: 20px;
-        margin: 20px auto;
-        max-width: 600px;
-        text-align: left;
-    }
-
-    .message {
-        margin-bottom: 10px;
-    }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 24px;
+            color: #172033;
+            background: #eef3f8;
+            font: 15px/1.5 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+        main {
+            width: min(100%, 1180px);
+            margin: 24px auto;
+            padding: 28px;
+            border-radius: 16px;
+            background: #fff;
+            box-shadow: 0 16px 40px rgba(26, 45, 78, .12);
+        }
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px; border-bottom: 1px solid #e3e8ef; text-align: left; vertical-align: top; }
+        th { background: #f7f9fc; }
+        .status { font-weight: 700; }
+        a { color: #1769e0; }
     </style>
 </head>
-
 <body>
-    <h1>Painel de Mensagens</h1>
+    <main>
+        <h1>Pedidos recebidos</h1>
+        <p>A página é atualizada automaticamente a cada 15 segundos.</p>
 
-    <div class="message-panel">
-        <?php
-        // Função para exibir mensagens
-        function exibirMensagem($mensagem)
-        {
-            echo "<div class='message'>";
-            echo "<p>$mensagem</p>";
-            echo "</div>";
-        }
+        <?php if (!$orders): ?>
+            <p>Nenhum pedido encontrado.</p>
+        <?php else: ?>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Pedido</th>
+                            <th>Cliente</th>
+                            <th>Restaurante</th>
+                            <th>Pratos</th>
+                            <th>Horário</th>
+                            <th>Opção</th>
+                            <th>Status</th>
+                            <th>Observações</th>
+                            <th>Criado em</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($orders as $order): ?>
+                            <tr>
+                                <td>#<?= e($order['id_pedido']) ?></td>
+                                <td><?= e($order['nome_cliente']) ?></td>
+                                <td><?= e($order['nome_restaurante']) ?></td>
+                                <td><?= e($order['pratos']) ?></td>
+                                <td><?= e($order['hora_almoco'] ?: '—') ?></td>
+                                <td><?= $order['opcao_refeicao'] === 'retirada' ? 'Retirada' : 'Local' ?></td>
+                                <td class="status"><?= e($statusLabels[$order['status']] ?? $order['status']) ?></td>
+                                <td><?= e($order['observacoes'] ?: '—') ?></td>
+                                <td><?= e($order['criado_em']) ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        <?php endif; ?>
 
-        // Verifica se a requisição é do tipo POST ou AJAX
-        if ($_SERVER["REQUEST_METHOD"] == "POST" || !empty($_POST)) {
-            if (
-                isset($_POST['nomeUsuario']) &&
-                isset($_POST['nomeRestaurante']) &&
-                isset($_POST['pratosId'])
-            ) {
-                $nomeUsuario = $_POST['nomeUsuario'];
-                $nomeRestaurante = $_POST['nomeRestaurante']; // Receba o nome do restaurante do formulário
-                $pratosSelecionados = $_POST['pratosId'];
-                $horaAlmoco = isset($_POST['horaAlmoco']) ? $_POST['horaAlmoco'] : '';
-                $opcaoRefeicao = isset($_POST['opcaoRefeicao']) ? $_POST['opcaoRefeicao'] : '';
-                $observacoes = isset($_POST['observacoes']) ? $_POST['observacoes'] : '';
-
-                // Exibe as informações em um painel de mensagens
-                exibirMensagem("<strong>Nome do Cliente:</strong> $nomeUsuario");
-                exibirMensagem("<strong>Restaurante:</strong> $nomeRestaurante"); // Exiba o nome do restaurante
-                exibirMensagem("<strong>Pratos Selecionados:</strong>");
-                echo "<ul>";
-                foreach ($pratosSelecionados as $pratoId) {
-                    exibirMensagem("<li>$pratoId</li>");
-                }
-                echo "</ul>";
-                exibirMensagem("<strong>Hora do Almoço:</strong> $horaAlmoco");
-                exibirMensagem("<strong>Opção de Refeição:</strong> $opcaoRefeicao");
-                exibirMensagem("<strong>Observações:</strong> $observacoes");
-                exibirMensagem("<hr>");
-
-                // Armazena as mensagens na variável de sessão
-                $novaMensagem = array(
-                    'nomeUsuario' => $nomeUsuario,
-                    'nomeRestaurante' => $nomeRestaurante, // Armazene o nome do restaurante
-                    'pratosSelecionados' => $pratosSelecionados,
-                    'horaAlmoco' => $horaAlmoco,
-                    'opcaoRefeicao' => $opcaoRefeicao,
-                    'observacoes' => $observacoes
-                );
-                $_SESSION['mensagens'][] = $novaMensagem;
-            } else {
-                exibirMensagem("<strong>Erro:</strong> Dados do pedido inválidos.");
-            }
-        }
-
-        // Exibe as mensagens armazenadas na variável de sessão
-        if (isset($_SESSION['mensagens'])) {
-            $mensagensAntigas = array_reverse($_SESSION['mensagens']);
-            foreach ($mensagensAntigas as $mensagem) {
-                exibirMensagem("<strong>Nome do Cliente:</strong> " . $mensagem['nomeUsuario']);
-                exibirMensagem("<strong>Restaurante:</strong> " . $mensagem['nomeRestaurante']);
-                exibirMensagem("<strong>Pratos Selecionados:</strong>");
-                if (isset($mensagem['pratosSelecionados']) && is_array($mensagem['pratosSelecionados'])) {
-                    echo "<ul>";
-                    foreach ($mensagem['pratosSelecionados'] as $pratoId) {
-                        exibirMensagem("<li>$pratoId</li>");
-                    }
-                    echo "</ul>";
-                } else {
-                    exibirMensagem("<em>Nenhum prato selecionado</em>");
-                }
-                exibirMensagem("<strong>Hora do Almoço:</strong> " . $mensagem['horaAlmoco']);
-                exibirMensagem("<strong>Opção de Refeição:</strong> " . $mensagem['opcaoRefeicao']);
-                exibirMensagem("<strong>Observações:</strong> " . $mensagem['observacoes']);
-                exibirMensagem("<hr>");
-            }
-        }
-        ?>
-    </div>
-
-    <?php
-    // Adicione JavaScript para recarregar a página após um curto intervalo (por exemplo, 2 segundos)
-    echo "<script>
-        setTimeout(function(){
-            location.reload();
-        }, 2000); // 2000 milissegundos = 2 segundos
-    </script>";
-    ?>
+        <p><a href="boas_vindas.php">Voltar ao início</a></p>
+    </main>
 </body>
-
 </html>

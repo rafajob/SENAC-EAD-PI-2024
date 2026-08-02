@@ -1,14 +1,28 @@
 <?php
-include 'conexao.php';
 
-try {
-    $stmt = $pdo->query("SELECT * FROM restaurantes");
+declare(strict_types=1);
 
-    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        echo '<option value="' . $row['id'] . '">' . $row['nome_restaurante'] . '</option>';
-    }
-} catch (PDOException $e) {
-    echo "Erro ao conectar ao banco de dados: " . $e->getMessage();
-} finally {
-    $pdo = null;
+require_once __DIR__ . '/auth.php';
+require_auth();
+
+header('Content-Type: application/json; charset=utf-8');
+
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    echo json_encode(['error' => 'Método não permitido.']);
+    exit();
 }
+
+require_csrf();
+require_once __DIR__ . '/conexao.php';
+
+$statement = $pdo->query(
+    'SELECT id_restaurante, nome_restaurante
+     FROM restaurantes
+     ORDER BY nome_restaurante'
+);
+
+echo json_encode(
+    ['restaurantes' => $statement->fetchAll()],
+    JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+);

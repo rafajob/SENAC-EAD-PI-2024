@@ -1,13 +1,8 @@
 <?php
-session_start(); // Inicia a sessão
 
-// Verifica se o usuário já está autenticado
-if (isset($_SESSION['authenticated']) && $_SESSION['authenticated'] === true) {
-    header("Location: boas_vindas.php");
-    exit();
-	
-}else{header("Location: login.php");}
+declare(strict_types=1);
 
-// Se não estiver autenticado, exibe o formulário de login
+require_once __DIR__ . '/auth.php';
 
-?>
+header('Location: ' . (is_authenticated() ? 'boas_vindas.php' : 'login.php'));
+exit();
