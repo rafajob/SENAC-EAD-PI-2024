@@ -1,128 +1,158 @@
 <?php
-session_start(); // Inicia a sessão
 
-// Verifica se o usuário já está autenticado
-if (isset($_SESSION['authenticated']) && $_SESSION['authenticated'] === true) {
-    header("Location: boas_vindas.php");
+declare(strict_types=1);
+
+require_once __DIR__ . '/auth.php';
+
+if (is_authenticated()) {
+    header('Location: boas_vindas.php');
     exit();
 }
 
-// Se não estiver autenticado, exibe o formulário de login
-?>
+$error = '';
 
-<!DOCTYPE html>
-<html>
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_csrf();
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Login Mobile</title>
-    <style>
-    body {
-        font-family: Arial, sans-serif;
-        background-color: #f1f1f1;
-        margin: 0;
-        padding: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        height: 100vh;
-    }
+    $now = time();
+    $windowSeconds = 300;
+    $maxAttempts = 5;
+    $attempts = is_array($_SESSION['login_attempts'] ?? null)
+        ? $_SESSION['login_attempts']
+        : [];
 
-    .container {
-        width: 100%;
-        max-width: 300px;
-        margin: 20px;
-        padding: 20px;
-        background-color: #ffffff;
-        border-radius: 5px;
-        box-shadow: 0 2px 5px #ccc;
-    }
+    $attempts = array_values(array_filter(
+        $attempts,
+        static fn ($attempt): bool => is_int($attempt) && $attempt > $now - $windowSeconds
+    ));
 
-    input[type="text"],
-    input[type="password"],
-    input[type="submit"] {
-        width: 100%;
-        padding: 10px;
-        margin: 5px 0;
-        border: 1px solid #ccc;
-        border-radius: 3px;
-        box-sizing: border-box;
-    }
+    if (count($attempts) >= $maxAttempts) {
+        $error = 'Muitas tentativas. Aguarde alguns minutos.';
+    } else {
+        $username = trim((string) ($_POST['username'] ?? ''));
+        $password = (string) ($_POST['senha'] ?? '');
 
-    input[type="submit"] {
-        background-color: #007BFF;
-        color: #fff;
-        border: none;
-        cursor: pointer;
-    }
+        require_once __DIR__ . '/conexao.php';
 
-    img {
-        display: block;
-        margin: 0 auto;
-    }
-    </style>
+        $statement = $pdo->prepare(
+            'SELECT id_cliente, nome_cliente, senha_hash, perfil, id_restaurante
+             FROM clientes
+             WHERE nome_cliente = :username
+             LIMIT 1'
+        );
+        $statement->execute(['username' => $username]);
+        $user = $statement->fetch();
 
-</head>
+        if ($user && password_verify($password, $user['senha_hash'])) {
+            session_regenerate_id(true);
+            unset($_SESSION['login_attempts']);
 
-<body>
-    <div class="container">
-        <h1>Food in Time app</h1>
-
-        <p>Olá, bem vindo(a) ao app de reserva de refeições</p>
-        <img src="imagem/mesa.png" alt="casal sentado a mesa" />
-        <h2>Login</h2>
-        <form method="post" action="login.php">
-            <label for="username">Usuário:</label>
-            <input type="text" id="username" name="username" required>
-
-            <label for="senha">Senha:</label>
-            <input type="password" id="senha" name="senha" required>
-
-            <input type="submit" value="Login">
-        </form>
-    </div>
-</body>
-
-</html>
-
-<?php
-// Verifica as credenciais quando o formulário é enviado
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $username = trim($_POST["username"]);
-    $senha = $_POST["senha"];
-
-    try {
-        // Detalhes da conexão com o banco de dados MySQL
-        $host = 'localhost';
-        $dbname = 'alimentacao';
-        $db_username = 'root';
-        $db_password = 'root';
-
-        // Conexão com o banco de dados MySQL
-        $pdo = new PDO("mysql:host=$host;dbname=$dbname", $db_username, $db_password);
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-        // Consulta para verificar as credenciais
-        $query = "SELECT * FROM clientes WHERE nome_cliente = :username";
-        $stmt = $pdo->prepare($query);
-        $stmt->bindParam(":username", $username);
-        $stmt->execute();
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if ($row && $senha == $row["senha"]) {
-            // Define a sessão como autenticada e redireciona para a página de boas-vindas
             $_SESSION['authenticated'] = true;
-            header("Location: boas_vindas.php");
+            $_SESSION['user_id'] = (int) $user['id_cliente'];
+            $_SESSION['username'] = $user['nome_cliente'];
+            $_SESSION['user_role'] = $user['perfil'];
+            $_SESSION['restaurant_id'] = $user['id_restaurante'] !== null
+                ? (int) $user['id_restaurante']
+                : null;
+
+            header('Location: boas_vindas.php');
             exit();
-        } else {
-            echo "Credenciais inválidas. Tente novamente.<br>";
         }
-    } catch (PDOException $e) {
-        echo "Erro ao conectar ao banco de dados: " . $e->getMessage();
-    } finally {
-        // Fechamento da conexão com o banco de dados
-        $pdo = null;
+
+        $attempts[] = $now;
+        $_SESSION['login_attempts'] = $attempts;
+        $error = 'Usuário ou senha inválidos.';
     }
 }
 ?>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entrar | Food in Time</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            min-height: 100vh;
+            margin: 0;
+            display: grid;
+            place-items: center;
+            padding: 24px;
+            color: #172033;
+            background: #eef3f8;
+            font: 16px/1.5 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+        .card {
+            width: min(100%, 420px);
+            padding: 32px;
+            border-radius: 16px;
+            background: #fff;
+            box-shadow: 0 16px 40px rgba(26, 45, 78, .12);
+        }
+        h1 { margin: 0 0 8px; }
+        p { color: #536178; }
+        label { display: block; margin-top: 16px; font-weight: 600; }
+        input {
+            width: 100%;
+            margin-top: 6px;
+            padding: 12px;
+            border: 1px solid #c9d3e0;
+            border-radius: 8px;
+            font: inherit;
+        }
+        button {
+            width: 100%;
+            margin-top: 24px;
+            padding: 12px;
+            border: 0;
+            border-radius: 8px;
+            color: #fff;
+            background: #1769e0;
+            font: inherit;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .error {
+            padding: 10px 12px;
+            border-radius: 8px;
+            color: #8a1c1c;
+            background: #fde8e8;
+        }
+    </style>
+</head>
+<body>
+    <main class="card">
+        <h1>Food in Time</h1>
+        <p>Entre para reservar sua refeição.</p>
+
+        <?php if ($error !== ''): ?>
+            <p class="error" role="alert"><?= e($error) ?></p>
+        <?php endif; ?>
+
+        <form method="post" action="login.php">
+            <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
+
+            <label for="username">Usuário</label>
+            <input
+                type="text"
+                id="username"
+                name="username"
+                autocomplete="username"
+                required
+            >
+
+            <label for="senha">Senha</label>
+            <input
+                type="password"
+                id="senha"
+                name="senha"
+                autocomplete="current-password"
+                required
+            >
+
+            <button type="submit">Entrar</button>
+        </form>
+    </main>
+</body>
+</html>
