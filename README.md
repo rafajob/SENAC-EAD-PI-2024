@@ -74,4 +74,6 @@ Este projeto é educacional. Antes de uma implantação real, ainda devem ser ac
 
 ## Histórico
 
-A primeira versão foi criada como Projeto Integrador do SENAC. O fluxo foi modernizado para corrigir inconsistências de banco, remover credenciais do código, evitar XSS direto e substituir o armazenamento temporário em sessão por persistência real.
+A primeira versão foi criada em 2023 como Projeto Integrador do SENAC. Sua proposta, limitações e evolução estão registradas em [docs/historico-2023.md](docs/historico-2023.md).
+
+O código original permanece no repositório [Senac_PI_2023](https://github.com/rafajob/Senac_PI_2023), preservando colaboradores e commits. O fluxo atual foi modernizado para corrigir inconsistências de banco, retirar credenciais do código, reduzir riscos de XSS e substituir o armazenamento temporário em sessão por persistência real.
